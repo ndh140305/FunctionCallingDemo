@@ -1,0 +1,177 @@
+import os
+import sys
+import json
+from dotenv import load_dotenv
+
+# Fix Windows console encoding for Vietnamese characters
+sys.stdout.reconfigure(encoding='utf-8')
+
+from groq import Groq
+
+from tools.weather_tool import get_current_weather, weather_tool_declaration
+from tools.math_tool import calculate_expression, math_tool_declaration
+
+load_dotenv()
+
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY"),
+)
+
+MODEL_ID = "llama-3.3-70b-versatile"
+
+AVAILABLE_FUNCTIONS = {
+    "get_current_weather": get_current_weather,
+    "calculate_expression": calculate_expression,
+}
+
+tools = [
+    {
+        "type": "function",
+        "function": weather_tool_declaration,
+    },
+    {
+        "type": "function",
+        "function": math_tool_declaration,
+    },
+]
+
+
+def process_user_prompt(user_prompt: str) -> dict:
+    """Xử lý prompt của user qua Groq Function Calling.
+
+    Nhận đầu vào là user prompt, gửi tới Groq để model quyết định
+    tool nào cần gọi, thực thi tool đó, rồi trả kết quả cuối cùng.
+
+    Args:
+        user_prompt: Câu hỏi/yêu cầu từ người dùng.
+
+    Returns:
+        dict chứa:
+            - user_prompt: prompt gốc
+            - tool_calls: danh sách các tool được gọi (tên + tham số)
+            - tool_results: kết quả từ các tool
+            - final_answer: câu trả lời cuối cùng từ model
+    """
+    messages = [{"role": "user", "content": user_prompt}]
+
+    # Bước 1: Gửi prompt tới Groq với tool declarations
+    response = client.chat.completions.create(
+        model=MODEL_ID,
+        messages=messages,
+        tools=tools,
+        tool_choice="auto",
+        temperature=0,
+    )
+
+    result = {
+        "user_prompt": user_prompt,
+        "tool_calls": [],
+        "tool_results": [],
+        "final_answer": None,
+    }
+
+    response_message = response.choices[0].message
+
+    # Bước 2: Kiểm tra xem model có yêu cầu gọi tool không
+    if not response_message.tool_calls:
+        # Model trả lời trực tiếp, không cần gọi tool
+        result["final_answer"] = response_message.content
+        return result
+
+    # Thêm response của assistant vào messages
+    messages.append({
+        "role": "assistant",
+        "content": response_message.content,
+        "tool_calls": [
+            {
+                "id": tc.id,
+                "type": "function",
+                "function": {
+                    "name": tc.function.name,
+                    "arguments": tc.function.arguments
+                }
+            }
+            for tc in response_message.tool_calls
+        ]
+    })
+
+    # Bước 3: Thực thi từng function call
+    for tool_call in response_message.tool_calls:
+        function_name = tool_call.function.name
+        function_args = json.loads(tool_call.function.arguments)
+
+        result["tool_calls"].append({
+            "name": function_name,
+            "arguments": function_args,
+        })
+
+        # Gọi hàm tương ứng
+        if function_name in AVAILABLE_FUNCTIONS:
+            func = AVAILABLE_FUNCTIONS[function_name]
+            tool_output = func(**function_args)
+        else:
+            tool_output = {"error": f"Tool '{function_name}' không được hỗ trợ."}
+
+        result["tool_results"].append({
+            "name": function_name,
+            "output": tool_output,
+        })
+
+        # Thêm kết quả tool vào messages để gửi lại cho model
+        messages.append({
+            "role": "tool",
+            "tool_call_id": tool_call.id,
+            "name": function_name,
+            "content": json.dumps(tool_output, ensure_ascii=False),
+        })
+
+    # Bước 4: Gửi kết quả tool về cho model để tạo câu trả lời cuối
+    follow_up = client.chat.completions.create(
+        model=MODEL_ID,
+        messages=messages,
+        tools=tools,
+        temperature=0,
+    )
+
+    result["final_answer"] = follow_up.choices[0].message.content
+
+    return result
+
+
+# --- Main ---
+if __name__ == "__main__":
+
+    file_path = "data/demo_dataset.jsonl"
+
+    test_prompts = []
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip(): 
+                data_row = json.loads(line)
+                
+                prompt = data_row.get("user_query")
+                
+                if prompt:
+                    test_prompts.append(prompt)
+
+    for prompt in test_prompts:
+        print("=" * 60)
+        print(f"[USER] {prompt}")
+        print("-" * 60)
+
+        output = process_user_prompt(prompt)
+
+        if output["tool_calls"]:
+            print("[TOOLS] Tools duoc goi:")
+            for tc in output["tool_calls"]:
+                print(f"   -> {tc['name']}({json.dumps(tc['arguments'], ensure_ascii=False)})")
+
+            print("\n[RESULT] Ket qua tu tools:")
+            for tr in output["tool_results"]:
+                print(f"   -> {tr['name']}: {json.dumps(tr['output'], ensure_ascii=False)}")
+        else:
+            print("[INFO] Khong can goi tool.")
+
+        print(f"\n[ANSWER] Tra loi: {output['final_answer']}")
+        print()
