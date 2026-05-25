@@ -31,8 +31,37 @@ with col_chat:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    if user_query := st.chat_input("Ask Grok"):
+    # Tạo thư mục data nếu chưa có
+    os.makedirs("data", exist_ok=True)
 
+    col_upload, col_input = st.columns([1, 12])
+
+    with col_upload:
+        with st.popover("➕", help="Tải lên tài liệu PDF"):
+            st.markdown("### Tải lên tài liệu PDF")
+            uploaded_file = st.file_uploader("Chọn file PDF", type=["pdf"], label_visibility="collapsed")
+            if uploaded_file is not None:
+                file_path = os.path.join("data", uploaded_file.name)
+                with open(file_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                st.success("Đã tải lên thành công!")
+                st.info(f"Đường dẫn file: `{file_path}`")
+            
+            st.markdown("---")
+            st.markdown("### Các file PDF sẵn có:")
+            pdf_files = [f for f in os.listdir("data") if f.endswith(".pdf")]
+            if pdf_files:
+                for file in pdf_files:
+                    st.code(f"data/{file}", language="text")
+            else:
+                st.info("Thư mục `data/` chưa có file PDF nào.")
+
+    with col_input:
+        user_query = st.chat_input("Ask Grok")
+
+    # Xử lý khi người dùng gửi câu hỏi
+    if user_query:
+        # Hiển thị câu hỏi của user lập tức
         with st.chat_message("user"):
             st.markdown(user_query)
         st.session_state.messages.append({"role": "user", "content": user_query})
@@ -57,6 +86,7 @@ with col_chat:
             "tool_calls": tool_calls,
             "tool_results": tool_results,
         })
+        st.rerun()  # Rerun để hiển thị log mới nhất ở cột bên phải
 
 with col_log:
     st.subheader("Tool call logs")
@@ -74,7 +104,7 @@ with col_log:
                 
                 st.json(tc['arguments'])
                 
-                st.markdown("Tool được thực thi và trả về kết quả:*")
+                st.markdown("Tool được thực thi và trả về kết quả:")
                 
                 st.info(f"Dữ liệu Tool: {tr['output']}")
         else:

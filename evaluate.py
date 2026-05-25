@@ -10,6 +10,7 @@ from groq import Groq
 
 from tools.weather_tool import get_current_weather, weather_tool_declaration
 from tools.math_tool import calculate_expression, math_tool_declaration
+from tools.pdf_tool import read_pdf_file, pdf_tool_declaration
 
 load_dotenv()
 
@@ -18,10 +19,12 @@ client = Groq(
 )
 
 MODEL_ID = "llama-3.3-70b-versatile"
+# MODEL_ID = "llama-3.1-8b-instant"
 
 AVAILABLE_FUNCTIONS = {
     "get_current_weather": get_current_weather,
     "calculate_expression": calculate_expression,
+    "read_pdf_file": read_pdf_file,
 }
 
 tools = [
@@ -32,6 +35,10 @@ tools = [
     {
         "type": "function",
         "function": math_tool_declaration,
+    },
+    {
+        "type": "function",
+        "function": pdf_tool_declaration,
     },
 ]
 
@@ -47,12 +54,23 @@ def process_user_prompt(user_prompt: str) -> dict:
 
     Returns:
         dict chứa:
+            - system_prompt: prompt hệ thống quy định chỉ được dùng kq từ tool
             - user_prompt: prompt gốc
             - tool_calls: danh sách các tool được gọi (tên + tham số)
             - tool_results: kết quả từ các tool
             - final_answer: câu trả lời cuối cùng từ model
     """
-    messages = [{"role": "user", "content": user_prompt}]
+    messages = [
+    {
+        "role": "system", 
+        "content": """Bạn là một trợ lý thông minh. Khi nhận được câu hỏi yêu cầu tính toán hoặc dữ liệu cụ thể, bạn phải luôn gọi công cụ (tool) tương ứng trước.
+                    Quy tắc ưu tiên dữ liệu:
+                    1. Nếu công cụ trả về kết quả thành công: Bạn phải sử dụng kết quả đó làm căn cứ duy nhất để trả lời, ngay cả khi nó khác với tính toán nội bộ của bạn.
+                    2. Nếu công cụ trả về lỗi, không có kết quả, hoặc trả về thông báo không hỗ trợ: Bạn phải thông báo rõ cho người dùng rằng 'Công cụ không thể trả về kết quả trực tiếp'. Sau đó, bạn được phép sử dụng kiến thức và khả năng tính toán tự thân của mình để đưa ra kết quả dự phòng cho người dùng.
+                    3. Mọi câu trả lời tự tính toán phải được chú thích rõ là do bạn tự thực hiện vì công cụ gặp sự cố."""
+    },
+    {"role": "user", "content": user_prompt}
+]
 
     # Bước 1: Gửi prompt tới Groq với tool declarations
     response = client.chat.completions.create(
@@ -155,7 +173,7 @@ if __name__ == "__main__":
                 if prompt:
                     test_prompts.append(prompt)
 
-    for prompt in test_prompts:
+    for prompt in test_prompts[:2]:
         print("=" * 60)
         print(f"[USER] {prompt}")
         print("-" * 60)
