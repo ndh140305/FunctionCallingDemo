@@ -72,87 +72,105 @@ def process_user_prompt(user_prompt: str) -> dict:
     {"role": "user", "content": user_prompt}
 ]
 
-    # Bước 1: Gửi prompt tới Groq với tool declarations
-    response = client.chat.completions.create(
-        model=MODEL_ID,
-        messages=messages,
-        tools=tools,
-        tool_choice="auto",
-        temperature=0,
-    )
-
+    max_iterations = 5 
+    iteration = 0
+    result = {"user_prompt": user_prompt, "steps": []}
+    
     result = {
         "user_prompt": user_prompt,
-        "tool_calls": [],
-        "tool_results": [],
-        "final_answer": None,
+        "tool_calls": [],      
+        "tool_results": [],    
+        "steps": [],
+        "final_answer": None
     }
+    
+    while (iteration < max_iterations):
+        # Bước 1: Gửi prompt tới Groq với tool declarations
+        response = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+            temperature=0,
+        )
 
-    response_message = response.choices[0].message
+        # result = {
+        #     "user_prompt": user_prompt,
+        #     "tool_calls": [],
+        #     "tool_results": [],
+        #     "final_answer": None,
+        # }
 
-    # Bước 2: Kiểm tra xem model có yêu cầu gọi tool không
-    if not response_message.tool_calls:
-        # Model trả lời trực tiếp, không cần gọi tool
-        result["final_answer"] = response_message.content
-        return result
+        response_message = response.choices[0].message
 
-    # Thêm response của assistant vào messages
-    messages.append({
-        "role": "assistant",
-        "content": response_message.content,
-        "tool_calls": [
-            {
-                "id": tc.id,
-                "type": "function",
-                "function": {
-                    "name": tc.function.name,
-                    "arguments": tc.function.arguments
-                }
-            }
-            for tc in response_message.tool_calls
-        ]
-    })
+        # Bước 2: Kiểm tra xem model có yêu cầu gọi tool không
+        if not response_message.tool_calls:
+            # Model trả lời trực tiếp, không cần gọi tool
+            result["final_answer"] = response_message.content
+            return result
 
-    # Bước 3: Thực thi từng function call
-    for tool_call in response_message.tool_calls:
-        function_name = tool_call.function.name
-        function_args = json.loads(tool_call.function.arguments)
-
-        result["tool_calls"].append({
-            "name": function_name,
-            "arguments": function_args,
-        })
-
-        # Gọi hàm tương ứng
-        if function_name in AVAILABLE_FUNCTIONS:
-            func = AVAILABLE_FUNCTIONS[function_name]
-            tool_output = func(**function_args)
-        else:
-            tool_output = {"error": f"Tool '{function_name}' không được hỗ trợ."}
-
-        result["tool_results"].append({
-            "name": function_name,
-            "output": tool_output,
-        })
-
-        # Thêm kết quả tool vào messages để gửi lại cho model
+        # Thêm response của assistant vào messages
         messages.append({
-            "role": "tool",
-            "tool_call_id": tool_call.id,
-            "name": function_name,
-            "content": json.dumps(tool_output, ensure_ascii=False),
+            "role": "assistant",
+            "content": response_message.content,
+            "tool_calls": [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments
+                    }
+                }
+                for tc in response_message.tool_calls
+            ]
         })
 
-    # Bước 4: Gửi kết quả tool về cho model để tạo câu trả lời cuối
-    follow_up = client.chat.completions.create(
-        model=MODEL_ID,
-        messages=messages,
-        tools=tools,
-        temperature=0,
-    )
+        # Bước 3: Thực thi từng function call
+        for tool_call in response_message.tool_calls:
+            function_name = tool_call.function.name
+            
+            try:
+                function_args = json.loads(tool_call.function.arguments)
+            except Exception as e:
+                function_args = {}
+                tool_output = {"error": f"Lỗi định dạng tham số từ model: {str(e)}"}
+                
+            result["tool_calls"].append({
+                "name": function_name,
+                "arguments": function_args,
+            })
 
-    result["final_answer"] = follow_up.choices[0].message.content
+            # Gọi hàm tương ứng
+            if "error" not in locals().get('tool_output', {}):
+                if function_name in AVAILABLE_FUNCTIONS:
+                    func = AVAILABLE_FUNCTIONS[function_name]
+                    try:
+                        tool_output = func(**function_args)
+                    except Exception as e:
+                        tool_output = {"error": f"Lỗi khi thực thi tool: {str(e)}"}
+                else:
+                    tool_output = {"error": f"Tool '{function_name}' không được hỗ trợ."}
 
+            result["tool_results"].append({
+                "name": function_name,
+                "output": tool_output,
+            })
+
+            # Thêm kết quả tool vào messages để gửi lại cho model
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "name": function_name,
+                "content": json.dumps(tool_output, ensure_ascii=False),
+            })
+            
+            result["steps"].append({"tool": function_name, "output": tool_output})
+
+        iteration += 1
+        
+    result["final_answer"] = "Hệ thống đã đạt giới hạn vòng lặp suy luận nhưng chưa tìm ra câu trả lời."
+    
     return result
 
 

@@ -6,8 +6,8 @@ def extract_xlam_subset():
     dataset = load_dataset("Salesforce/xlam-function-calling-60k", split="train")
     subset_data = []
 
-   weather_keywords = ["weather", "temperature", "forecast", "climate", "rain", "wind"]
-   math_keywords = ["math", "calculator", "calculate", "expression", "add", "multiply", "divide", "subtract"]
+    weather_keywords = ["weather", "temperature", "forecast", "climate", "rain", "wind"]
+    math_keywords = ["math", "calculator", "calculate", "expression", "add", "multiply", "divide", "subtract"]
 
     for item in dataset:
         tools_str = str(item['tools']).lower()
