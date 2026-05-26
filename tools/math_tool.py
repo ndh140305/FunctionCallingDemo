@@ -1,5 +1,7 @@
 import math
-from simpleeval import simple_eval
+import ast
+from simpleeval import EvalWithCompoundTypes
+
 def calculate_expression(expression: str) -> dict:
     """Tính toán một biểu thức toán học.
     Args:
@@ -36,8 +38,15 @@ def calculate_expression(expression: str) -> dict:
         "min": min
     })
 
+    s = EvalWithCompoundTypes(functions=allowed_functions, names=allowed_functions)
+
+    s.nodes[ast.List] = s._eval_list    
+    s.nodes[ast.Tuple] = s._eval_tuple  
+    s.nodes[ast.Dict] = s._eval_dict    
+    s.nodes[ast.Set] = s._eval_set
+
     try:
-        result = simple_eval(expression, functions=allowed_functions, names=allowed_functions)
+        result = s.eval(expression)
         return {
             "expression": expression,
             "result": result,

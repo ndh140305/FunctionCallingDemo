@@ -24,6 +24,17 @@ if "logs" not in st.session_state:
 
 col_chat, col_log = st.columns([3, 2])
 
+st.markdown("""
+    <style>
+    [data-testid="stVerticalBlock"] > div:has(div.stButton) {
+        border-radius: 25px;
+    }
+    .stChatInputContainer {
+        padding-bottom: 20px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 with col_chat:
     st.subheader("Chatbot")
     
@@ -34,34 +45,56 @@ with col_chat:
     # Tạo thư mục data nếu chưa có
     os.makedirs("data", exist_ok=True)
 
-    col_upload, col_input = st.columns([1, 12])
+    # col_upload, col_input = st.columns([1, 12])
 
-    with col_upload:
-        with st.popover("➕", help="Tải lên tài liệu PDF"):
-            st.markdown("### Tải lên tài liệu PDF")
-            uploaded_file = st.file_uploader("Chọn file PDF", type=["pdf"], label_visibility="collapsed")
-            if uploaded_file is not None:
-                file_path = os.path.join("data", uploaded_file.name)
-                with open(file_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                st.success("Đã tải lên thành công!")
-                st.info(f"Đường dẫn file: `{file_path}`")
+    # with col_upload:
+    #     with st.popover("➕", help="Tải lên tài liệu PDF"):
+    #         st.markdown("### Tải lên tài liệu PDF")
+    #         uploaded_file = st.file_uploader("Chọn file PDF", type=["pdf"], label_visibility="collapsed")
+    #         if uploaded_file is not None:
+    #             file_path = os.path.join("data", uploaded_file.name)
+    #             with open(file_path, "wb") as f:
+    #                 f.write(uploaded_file.getbuffer())
+    #             st.success("Đã tải lên thành công!")
+    #             st.info(f"Đường dẫn file: `{file_path}`")
             
-            st.markdown("---")
-            st.markdown("### Các file PDF sẵn có:")
-            pdf_files = [f for f in os.listdir("data") if f.endswith(".pdf")]
-            if pdf_files:
-                for file in pdf_files:
-                    st.code(f"data/{file}", language="text")
-            else:
-                st.info("Thư mục `data/` chưa có file PDF nào.")
+    #         st.markdown("---")
+    #         st.markdown("### Các file PDF sẵn có:")
+    #         pdf_files = [f for f in os.listdir("data") if f.endswith(".pdf")]
+    #         if pdf_files:
+    #             for file in pdf_files:
+    #                 st.code(f"data/{file}", language="text")
+    #         else:
+    #             st.info("Thư mục `data/` chưa có file PDF nào.")
 
-    with col_input:
-        user_query = st.chat_input("Ask Grok")
+    # with col_input:
+    #     user_query = st.chat_input("Ask Grok")
 
-    # Xử lý khi người dùng gửi câu hỏi
+    input_container = st.container()
+    
+    with input_container:
+        c1, c2 = st.columns([1, 10], gap="small")
+
+        with c1:
+            with st.popover("➕", help="Tải lên tài liệu PDF"):
+                st.markdown("### 📄 Quản lý tài liệu")
+                uploaded_file = st.file_uploader("Chọn file PDF", type=["pdf"])
+                if uploaded_file is not None:
+                    file_path = os.path.join("data", uploaded_file.name)
+                    with open(file_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                    st.success("Tải lên thành success!")
+                
+                st.markdown("---")
+                pdf_files = [f for f in os.listdir("data") if f.endswith(".pdf")]
+                if pdf_files:
+                    for file in pdf_files:
+                        st.caption(f"📁 {file}")
+
+        with c2:
+            user_query = st.chat_input("Ask Grok...")
+
     if user_query:
-        # Hiển thị câu hỏi của user lập tức
         with st.chat_message("user"):
             st.markdown(user_query)
         st.session_state.messages.append({"role": "user", "content": user_query})
