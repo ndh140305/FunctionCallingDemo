@@ -6,8 +6,7 @@ load_dotenv()
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
-
-def get_current_weather(location: str, unit: str = "celsius") -> dict:
+def get_current_weather(lat: float, lon: float, unit: str = "celsius") -> dict:
     """Lấy thông tin thời tiết hiện tại của một thành phố.
 
     Args:
@@ -20,7 +19,8 @@ def get_current_weather(location: str, unit: str = "celsius") -> dict:
     units_param = "metric" if unit == "celsius" else "imperial"
     url = "https://api.openweathermap.org/data/2.5/weather"
     params = {
-        "q": location,
+        "lat": lat,
+        "lon": lon,
         "appid": OPENWEATHER_API_KEY,
         "units": units_param,
         "lang": "vi",
@@ -43,23 +43,27 @@ def get_current_weather(location: str, unit: str = "celsius") -> dict:
         return {"error": f"Không thể lấy dữ liệu thời tiết: {str(e)}"}
 
 
-# Khai báo tool schema cho Gemini Function Calling
+# Khai báo tool schema 
 weather_tool_declaration = {
     "name": "get_current_weather",
-    "description": "Lấy thông tin thời tiết hiện tại của một thành phố bất kỳ trên thế giới.",
+    "description": "Lấy thông tin thời tiết hiện tại. BẮT BUỘC sử dụng tọa độ (lat, lon).",
     "parameters": {
         "type": "object",
         "properties": {
-            "location": {
-                "type": "string",
-                "description": "Tên thành phố, ví dụ: 'Hanoi', 'Tokyo', 'New York'",
+            "lat": {
+                "type": "number",
+                "description": "Vĩ độ (Latitude) lấy từ tool get_coordinates",
+            },
+            "lon": {
+                "type": "number",
+                "description": "Kinh độ (Longitude) lấy từ tool get_coordinates",
             },
             "unit": {
                 "type": "string",
                 "enum": ["celsius", "fahrenheit"],
-                "description": "Đơn vị nhiệt độ. Mặc định là celsius.",
+                "description": "Đơn vị nhiệt độ.",
             },
         },
-        "required": ["location"],
+        "required": ["lat", "lon"],
     },
 }
