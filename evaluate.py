@@ -102,20 +102,33 @@ def process_user_prompt(user_prompt: str) -> dict:
     
     while (iteration < max_iterations):
         # Bước 1: Gửi prompt tới Groq với tool declarations
-        response = client.chat.completions.create(
-            model=MODEL_ID,
-            messages=messages,
-            tools=tools,
-            tool_choice="auto",
-            temperature=0,
-        )
-
-        # result = {
-        #     "user_prompt": user_prompt,
-        #     "tool_calls": [],
-        #     "tool_results": [],
-        #     "final_answer": None,
-        # }
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_ID,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+                temperature=0,
+            )
+        except Exception as e:
+            error_str = str(e)
+            if "400" in error_str and "tool" in error_str.lower():
+                try:
+                    response = client.chat.completions.create(
+                        model=MODEL_ID,
+                        messages=messages,
+                        temperature=0,
+                    )
+                    result["final_answer"] = (
+                        response.choices[0].message.content
+                        + "\n\nLưu ý: Hệ thống không thể gọi công cụ tra cứu, "
+                        "câu trả lời dựa trên kiến thức của AI."
+                    )
+                    return result
+                except Exception:
+                    pass
+            result["final_answer"] = f"Hệ thống gặp lỗi khi gọi AI: {error_str}"
+            return result
 
         response_message = response.choices[0].message
 
