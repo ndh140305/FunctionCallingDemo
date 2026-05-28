@@ -10,11 +10,25 @@ def read_pdf_file(file_path: str) -> dict:
     Returns:
         dict: Chứa thông tin kết quả trích xuất văn bản hoặc thông tin lỗi.
     """
-    # Chuẩn hóa đường dẫn
     normalized_path = os.path.normpath(file_path)
     
     if not os.path.exists(normalized_path):
-        return {"error": f"Không tìm thấy file tại đường dẫn: {file_path}"}
+        data_dir = "data"
+        if os.path.exists(data_dir):
+            available_files = [f for f in os.listdir(data_dir) if f.endswith('.pdf')]
+            
+            search_term = os.path.basename(file_path).lower().replace('.pdf', '')
+            matched_files = [f for f in available_files if search_term in f.lower()]
+            
+            if matched_files:
+                normalized_path = os.path.join(data_dir, matched_files[0])
+            else:
+                return {
+                    "error": f"Không tìm thấy file nào khớp với '{file_path}'. "
+                             f"Các file hiện có trong hệ thống: {', '.join(available_files) if available_files else 'Chưa có file nào'}"
+                }
+        else:
+            return {"error": f"Không tìm thấy file tại đường dẫn: {file_path}"}
     
     try:
         reader = pypdf.PdfReader(normalized_path)
