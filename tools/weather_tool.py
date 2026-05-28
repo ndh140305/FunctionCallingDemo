@@ -7,10 +7,11 @@ load_dotenv()
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 def get_current_weather(lat: float, lon: float, unit: str = "celsius") -> dict:
-    """Lấy thông tin thời tiết hiện tại của một thành phố.
+    """Lấy thông tin thời tiết hiện tại dựa trên tọa độ địa lý.
 
     Args:
-        location: Tên thành phố (ví dụ: "Hanoi", "Ho Chi Minh City").
+        lat: Vĩ độ (Latitude) của địa điểm.
+        lon: Kinh độ (Longitude) của địa điểm.
         unit: Đơn vị nhiệt độ, "celsius" hoặc "fahrenheit". Mặc định "celsius".
 
     Returns:
