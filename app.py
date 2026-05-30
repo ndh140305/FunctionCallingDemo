@@ -3,7 +3,7 @@ import json
 import streamlit as st
 from dotenv import load_dotenv
 
-from evaluate import process_user_prompt
+from processor import process_user_prompt
 
 load_dotenv()
 
