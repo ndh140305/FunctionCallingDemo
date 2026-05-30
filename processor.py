@@ -3,7 +3,6 @@ import sys
 import json
 from dotenv import load_dotenv
 
-# Fix Windows console encoding for Vietnamese characters
 sys.stdout.reconfigure(encoding='utf-8')
 
 from groq import Groq
@@ -19,8 +18,8 @@ client = Groq(
     api_key=os.getenv("GROQ_API_KEY"),
 )
 
-MODEL_ID = "llama-3.3-70b-versatile"
-# MODEL_ID = "llama-3.1-8b-instant"
+#MODEL_ID = "llama-3.3-70b-versatile"
+MODEL_ID = "llama-3.1-8b-instant"
 
 AVAILABLE_FUNCTIONS = {
     "get_current_weather": get_current_weather,
@@ -202,42 +201,3 @@ def process_user_prompt(user_prompt: str) -> dict:
     result["final_answer"] = "Hệ thống đã đạt giới hạn vòng lặp suy luận nhưng chưa tìm ra câu trả lời."
     
     return result
-
-
-# --- Main ---
-if __name__ == "__main__":
-
-    file_path = "data/demo_dataset.jsonl"
-
-    test_prompts = []
-
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip(): 
-                data_row = json.loads(line)
-                
-                prompt = data_row.get("user_query")
-                
-                if prompt:
-                    test_prompts.append(prompt)
-
-    for prompt in test_prompts[:2]:
-        print("=" * 60)
-        print(f"[USER] {prompt}")
-        print("-" * 60)
-
-        output = process_user_prompt(prompt)
-
-        if output["tool_calls"]:
-            print("[TOOLS] Tools duoc goi:")
-            for tc in output["tool_calls"]:
-                print(f"   -> {tc['name']}({json.dumps(tc['arguments'], ensure_ascii=False)})")
-
-            print("\n[RESULT] Ket qua tu tools:")
-            for tr in output["tool_results"]:
-                print(f"   -> {tr['name']}: {json.dumps(tr['output'], ensure_ascii=False)}")
-        else:
-            print("[INFO] Khong can goi tool.")
-
-        print(f"\n[ANSWER] Tra loi: {output['final_answer']}")
-        print()

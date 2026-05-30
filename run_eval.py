@@ -25,19 +25,12 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 load_dotenv()
 
-# Import pipeline chính từ evaluate.py
-from evaluate import process_user_prompt, AVAILABLE_FUNCTIONS
-
-# ─── Cấu hình ─────────────────────────────────────────────────────────────────
+from processor import process_user_prompt, AVAILABLE_FUNCTIONS, MODEL_ID
 
 EVAL_PATH  = "data/eval_dataset.jsonl"
 RESULT_PATH = "data/eval_results.jsonl"
 
-# Giới hạn số mẫu chạy (None = chạy tất cả)
 MAX_SAMPLES = 50
-
-
-# ─── Helpers ──────────────────────────────────────────────────────────────────
 
 KNOWN_TOOLS = set(AVAILABLE_FUNCTIONS.keys())
 
@@ -68,9 +61,6 @@ def get_category(expected_tools: list[str]) -> str:
         return "pdf"
     return "other"
 
-
-# ─── Evaluation Loop ──────────────────────────────────────────────────────────
-
 def run_evaluation():
     if not os.path.exists(EVAL_PATH):
         print(f"[ERROR] Không tìm thấy {EVAL_PATH}")
@@ -93,10 +83,9 @@ def run_evaluation():
     total = len(samples)
     print(f"\n{'='*60}")
     print(f"  Bắt đầu đánh giá: {total} mẫu")
-    print(f"  Model: llama-3.3-70b-versatile (Groq)")
+    print(f"  Model: {MODEL_ID} (Groq)")
     print(f"{'='*60}\n")
 
-    # Tích lũy số liệu
     exact_match_count = 0
     no_tool_count     = 0
     hallucination_count = 0
@@ -116,13 +105,12 @@ def run_evaluation():
         try:
             output = process_user_prompt(query)
         except Exception as e:
-            print(f"          ⚠ Lỗi: {e}")
+            print(f"          Lỗi: {e}")
             output = {"tool_calls": [], "tool_results": [], "final_answer": f"ERROR: {e}"}
         latency = time.time() - t0
 
         predicted_tools = {tc["name"] for tc in output.get("tool_calls", [])}
 
-        # Metrics
         exact = (predicted_tools == expected_tools)
         no_tool = len(predicted_tools) == 0
         hallucination = bool(predicted_tools - KNOWN_TOOLS)
@@ -143,7 +131,6 @@ def run_evaluation():
         status = "✅" if exact else ("🔇" if no_tool else "❌")
         print(f"          {status} expected={sorted(expected_tools)} | got={sorted(predicted_tools)} | {latency:.1f}s")
 
-        # Lưu kết quả chi tiết
         results.append({
             "query":           query,
             "category":        category,
@@ -159,13 +146,11 @@ def run_evaluation():
             "final_answer":    output.get("final_answer", ""),
         })
 
-    # ─── Lưu kết quả chi tiết ──────────────────────────────────────────────────
     os.makedirs("data", exist_ok=True)
     with open(RESULT_PATH, "w", encoding="utf-8") as f:
         for r in results:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
-    # ─── In báo cáo tổng hợp ───────────────────────────────────────────────────
     avg_p  = sum(precisions) / total if total else 0
     avg_r  = sum(recalls)    / total if total else 0
     avg_f1 = sum(f1s)        / total if total else 0
