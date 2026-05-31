@@ -4,7 +4,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from processor import process_user_prompt
-from tools.email_tool import authenticate_gmail_flow, TOKEN_PATH
+from tools.email_tool import authenticate_gmail_flow, TOKEN_PATH, send_gmail
 
 load_dotenv()
 
@@ -71,6 +71,9 @@ if "messages" not in st.session_state:
 
 if "logs" not in st.session_state:
     st.session_state.logs = []
+
+if "email_draft" not in st.session_state:
+    st.session_state.email_draft = None
 
 col_chat, col_log = st.columns([3, 2])
 
@@ -163,6 +166,10 @@ with col_chat:
             st.markdown(final_answer)
         st.session_state.messages.append({"role": "assistant", "content": final_answer})
 
+        for res in tool_results:
+            if res.get("name") == "draft_email" and res.get("output", {}).get("status") == "pending_confirmation":
+                st.session_state.email_draft = res["output"]["draft"]
+
         # Lưu log để hiển thị ở cột bên phải
         st.session_state.logs.append({
             "query": user_query,
@@ -170,6 +177,36 @@ with col_chat:
             "tool_results": tool_results,
         })
         st.rerun()  # Rerun để hiển thị log mới nhất ở cột bên phải
+
+    if st.session_state.email_draft:
+        st.markdown("---")
+        st.subheader("Xác nhận nội dung Email")
+        with st.form("email_confirmation_form"):
+            draft = st.session_state.email_draft
+            edit_recipient = st.text_input("Người nhận", value=draft.get("recipient", ""))
+            edit_subject = st.text_input("Tiêu đề", value=draft.get("subject", ""))
+            edit_body = st.text_area("Nội dung", value=draft.get("body", ""), height=200)
+            
+            col_submit, col_cancel = st.columns([1, 1])
+            with col_submit:
+                submitted = st.form_submit_button("Xác nhận Gửi", type="primary", use_container_width=True)
+            with col_cancel:
+                cancelled = st.form_submit_button("Hủy bỏ", use_container_width=True)
+                
+            if submitted:
+                with st.spinner("Đang gửi email..."):
+                    res = send_gmail(edit_recipient, edit_subject, edit_body)
+                    if "error" in res:
+                        st.error(res["error"])
+                    else:
+                        st.success(res.get("message", "Đã gửi thành công!"))
+                        st.session_state.email_draft = None
+                        st.rerun()
+            
+            if cancelled:
+                st.session_state.email_draft = None
+                st.warning("Đã hủy gửi email.")
+                st.rerun()
 
 with col_log:
     st.subheader("Tool call logs")
