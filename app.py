@@ -4,6 +4,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from processor import process_user_prompt
+from tools.email_tool import authenticate_gmail_flow, TOKEN_PATH
 
 load_dotenv()
 
@@ -11,6 +12,55 @@ st.set_page_config(
     page_title="Tool-Augmented AI Agent",
     layout="wide"
 )
+
+with st.sidebar:
+    st.markdown("""
+        <style>
+        .gmail-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        }
+        .status-connected {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .status-disconnected {
+            color: #FF5722;
+            font-weight: bold;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("#### Kết nối Gmail")
+    
+    is_connected = os.path.exists(TOKEN_PATH)
+    
+    if is_connected:
+        st.markdown('Trạng thái: <span class="status-connected">● Đã liên kết thành công</span>', unsafe_allow_html=True)
+        if st.button("Ngắt kết nối Gmail", use_container_width=True):
+            if os.path.exists(TOKEN_PATH):
+                os.remove(TOKEN_PATH)
+            st.toast("Đã hủy quyền truy cập Gmail!")
+            st.rerun()
+    else:
+        st.markdown('Trạng thái: <span class="status-disconnected">● Chưa được cấp quyền</span>', unsafe_allow_html=True)        
+        if st.button("Kết nối với Google Gmail", type="primary", use_container_width=True):
+            with st.spinner("Đang mở trình duyệt để xác thực OAuth2..."):
+                try:
+                    authenticate_gmail_flow()
+                    st.toast("Kết nối Gmail thành công!")
+                    st.rerun()
+                except FileNotFoundError as fnf:
+                    st.error(str(fnf))
+                except Exception as e:
+                    st.error(f"Lỗi kết nối: {str(e)}")
+                    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 st.title("Demo kỹ thuật Function Calling của chatbot")
 st.caption("Demo các vấn đề hiện đại về KHMT")
@@ -76,7 +126,7 @@ with col_chat:
         c1, c2 = st.columns([1, 10], gap="small")
 
         with c1:
-            with st.popover("➕", help="Tải lên tài liệu PDF"):
+            with st.popover("+", help="Tải lên tài liệu PDF"):
                 st.markdown("### 📄 Quản lý tài liệu")
                 uploaded_file = st.file_uploader("Chọn file PDF", type=["pdf"])
                 if uploaded_file is not None:
