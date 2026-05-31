@@ -70,6 +70,59 @@ def send_gmail(recipient: str, subject: str, body: str) -> dict:
     except Exception as e:
         return {"error": f"Lỗi xảy ra trong quá trình gửi email qua Gmail API: {str(e)}"}
 
+def draft_email(recipient: str, subject: str, body: str) -> dict:
+    """Tạo bản nháp email để hiển thị cho người dùng xem xét và chỉnh sửa trước khi gửi.
+    Hàm này KHÔNG gửi email, chỉ trả về nháp để UI xử lý xác nhận.
+
+    Args:
+        recipient: Địa chỉ email người nhận.
+        subject: Tiêu đề email.
+        body: Nội dung email (có thể dùng HTML hoặc Plaintext).
+
+    Returns:
+        dict: Bản nháp email kèm trạng thái pending_confirmation.
+    """
+    return {
+        "status": "pending_confirmation",
+        "draft": {
+            "recipient": recipient,
+            "subject": subject,
+            "body": body,
+        },
+        "message": "Bản nháp email đã được tạo. Đang chờ người dùng xem xét và xác nhận trên giao diện."
+    }
+
+email_draft_declaration = {
+    "name": "draft_email",
+    "description": (
+        "Soạn thảo bản nháp email dựa trên yêu cầu của người dùng. "
+        "Tool này KHÔNG gửi email ngay lập tức mà chỉ tạo bản nháp để người dùng "
+        "xem xét, chỉnh sửa và xác nhận trước khi gửi thật. "
+        "Hãy sinh nội dung email chi tiết, chuyên nghiệp và phù hợp với yêu cầu."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "recipient": {
+                "type": "string",
+                "description": "Địa chỉ email của người nhận thư.",
+            },
+            "subject": {
+                "type": "string",
+                "description": "Tiêu đề email (ngắn gọn, rõ ràng, phù hợp nội dung).",
+            },
+            "body": {
+                "type": "string",
+                "description": (
+                    "Nội dung email đầy đủ, lịch sự, chuyên nghiệp. "
+                    "Sử dụng định dạng Plaintext rõ ràng với các đoạn văn được xuống dòng hợp lý."
+                ),
+            },
+        },
+        "required": ["recipient", "subject", "body"],
+    },
+}
+
 gmail_send_declaration = {
     "name": "send_gmail",
     "description": (
