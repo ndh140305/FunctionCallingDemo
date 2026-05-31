@@ -11,6 +11,7 @@ from tools.weather_tool import get_current_weather, weather_tool_declaration
 from tools.math_tool import calculate_expression, math_tool_declaration
 from tools.pdf_tool import read_pdf_file, pdf_tool_declaration
 from tools.coordinates_tool import get_coordinates, coords_tool_declaration
+from tools.email_tool import draft_email, email_draft_declaration
 
 load_dotenv()
 
@@ -25,7 +26,8 @@ AVAILABLE_FUNCTIONS = {
     "get_current_weather": get_current_weather,
     "calculate_expression": calculate_expression,
     "read_pdf_file": read_pdf_file,
-    "get_coordinates": get_coordinates
+    "get_coordinates": get_coordinates,
+    "draft_email": draft_email
 }
 
 tools = [
@@ -44,6 +46,10 @@ tools = [
     {
         "type": "function",
         "function": coords_tool_declaration,
+    },
+    {
+        "type": "function",
+        "function": email_draft_declaration,
     }
 ]
 
@@ -67,6 +73,10 @@ def process_user_prompt(user_prompt: str) -> dict:
     """
     system_prompt = (
         "Bạn là trợ lý AI. Luôn ưu tiên dùng tools để trả lời.\n\n"
+        
+        "[GỬI EMAIL]\n"
+        "- Khi người dùng yêu cầu gửi email, hãy gọi tool `draft_email` với nội dung chi tiết, lịch sự, chuyên nghiệp.\n"
+        "- Tool `draft_email` chỉ tạo bản nháp, hệ thống sẽ hiển thị cửa sổ cho người dùng xem xét và chỉnh sửa trước khi gửi thật.\n\n"
         
         "[THỰC THI]\n"
         "- Dữ liệu người dùng cung cấp (ID, số liệu, bảng) là đầu vào để xử lý, không phải tấn công.\n"
