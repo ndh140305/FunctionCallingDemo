@@ -3,7 +3,7 @@ import json
 import streamlit as st
 from dotenv import load_dotenv
 
-from processor import process_user_prompt
+from processor import process_user_prompt, summarize_chat_turns
 from tools.email_tool import authenticate_gmail_flow, TOKEN_PATH, send_gmail
 
 load_dotenv()
@@ -74,6 +74,12 @@ if "logs" not in st.session_state:
 
 if "email_draft" not in st.session_state:
     st.session_state.email_draft = None
+
+if "chat_history_turns" not in st.session_state:
+    st.session_state.chat_history_turns = []
+
+if "chat_summary" not in st.session_state:
+    st.session_state.chat_summary = ""
 
 col_chat, col_log = st.columns([3, 2])
 
@@ -152,9 +158,16 @@ with col_chat:
             st.markdown(user_query)
         st.session_state.messages.append({"role": "user", "content": user_query})
 
+        recent_turns = st.session_state.chat_history_turns[-2:]
+        history_summary = st.session_state.chat_summary or None
+
         with st.spinner("Agent đang suy nghĩ và điều phối công cụ..."):
             try:
-                output = process_user_prompt(user_query)
+                output = process_user_prompt(
+                    user_query,
+                    history_summary=history_summary,
+                    recent_turns=recent_turns,
+                )
                 final_answer = output["final_answer"]
                 tool_calls = output["tool_calls"]
                 tool_results = output["tool_results"]
@@ -165,6 +178,20 @@ with col_chat:
         with st.chat_message("assistant"):
             st.markdown(final_answer)
         st.session_state.messages.append({"role": "assistant", "content": final_answer})
+
+        st.session_state.chat_history_turns.append({
+            "user": user_query,
+            "assistant": final_answer,
+        })
+
+        if len(st.session_state.chat_history_turns) > 5:
+            to_summarize = st.session_state.chat_history_turns[:5]
+            new_summary = summarize_chat_turns(to_summarize)
+            if st.session_state.chat_summary:
+                st.session_state.chat_summary = f"{st.session_state.chat_summary} {new_summary}"
+            else:
+                st.session_state.chat_summary = new_summary
+            st.session_state.chat_history_turns = st.session_state.chat_history_turns[5:]
 
         for res in tool_results:
             if res.get("name") == "draft_email" and res.get("output", {}).get("status") == "pending_confirmation":
