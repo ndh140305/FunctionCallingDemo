@@ -19,8 +19,8 @@ client = Groq(
     api_key=os.getenv("GROQ_API_KEY"),
 )
 
-#MODEL_ID = "llama-3.3-70b-versatile"
-MODEL_ID = "llama-3.1-8b-instant"
+MODEL_ID = "llama-3.3-70b-versatile"
+#MODEL_ID = "llama-3.1-8b-instant"
 
 AVAILABLE_FUNCTIONS = {
     "get_current_weather": get_current_weather,
@@ -54,7 +54,10 @@ tools = [
 ]
 
 def classify_intent(user_prompt: str) -> str:
-    router_prompt = """Bạn là một bộ định tuyến (Router). Nhiệm vụ của bạn là đọc câu hỏi của người dùng và phân loại nó vào MỘT trong các nhóm sau. Tuyệt đối CHỈ TRẢ VỀ DUY NHẤT 1 TỪ KHÓA, không giải thích gì thêm:
+    router_prompt = """Bạn là một bộ định tuyến (Router). 
+    Nhiệm vụ của bạn là đọc câu hỏi của người dùng và phân loại nó vào các nhóm sau. 
+    Nếu câu hỏi có nhiều yêu cầu, hãy trả về TẤT CẢ các từ khóa tương ứng, cách nhau bằng dấu phẩy. 
+    Tuyệt đối CHỈ TRẢ VỀ CÁC TỪ KHÓA, không giải thích gì thêm:
 
 - THOI_TIET: Nếu câu hỏi hỏi về thời tiết, nhiệt độ.
 - TOAN_HOC: Nếu câu hỏi chứa phép tính toán học.
@@ -81,33 +84,42 @@ def process_user_prompt(user_prompt: str) -> dict:
     intent = classify_intent(user_prompt).upper()
     print(f"Router phân loại: {intent}")
 
-    tools_to_use = None
-    system_prompt = "Bạn là trợ lý AI thân thiện. Hãy trả lời câu hỏi của người dùng một cách tự nhiên."
+    tools_to_use = []
+    system_prompts = []
 
     if "THOI_TIET" in intent:
-        tools_to_use = [
+        tools_to_use.extend([
             {"type": "function", "function": coords_tool_declaration},
             {"type": "function", "function": weather_tool_declaration},
-        ]
-        system_prompt = (
+        ])
+        system_prompts.append(
             "Bạn là chuyên gia thời tiết. Hãy gọi tool để lấy tọa độ, sau đó xem thời tiết."
         )
-    elif "TOAN_HOC" in intent:
-        tools_to_use = [{"type": "function", "function": math_tool_declaration}]
-        system_prompt = "Hãy dùng tool calculate_expression để tính toán chính xác."
-    elif "DOC_PDF" in intent:
-        tools_to_use = [{"type": "function", "function": pdf_tool_declaration}]
-        system_prompt = (
+
+    if "TOAN_HOC" in intent:
+        tools_to_use.append({"type": "function", "function": math_tool_declaration})
+        system_prompts.append("Hãy dùng tool calculate_expression để tính toán chính xác.")
+
+    if "DOC_PDF" in intent:
+        tools_to_use.append({"type": "function", "function": pdf_tool_declaration})
+        system_prompts.append(
             "Bạn là chuyên gia đọc PDF. Hãy dùng tool phù hợp để đọc và tóm tắt nội dung file PDF."
         )
-    elif "EMAIL" in intent:
-        tools_to_use = [{"type": "function", "function": email_draft_declaration}]
-        system_prompt = (
+
+    if "EMAIL" in intent:
+        tools_to_use.append({"type": "function", "function": email_draft_declaration})
+        system_prompts.append(
             "Bạn là trợ lý email. Hãy gọi tool draft_email để soạn email lịch sự, đầy đủ và chuyên nghiệp."
         )
-    else:
+
+    if not tools_to_use:
         tools_to_use = None
         system_prompt = "Bạn là trợ lý AI thân thiện. Hãy trả lời câu hỏi của người dùng một cách tự nhiên."
+    else:
+        system_prompt = (
+            " ".join(system_prompts)
+            + " Hãy thực hiện các bước tuần tự theo yêu cầu."
+        )
 
     messages = [
         {"role": "system", "content": system_prompt},
