@@ -75,6 +75,9 @@ if "logs" not in st.session_state:
 if "email_draft" not in st.session_state:
     st.session_state.email_draft = None
 
+if "show_logs" not in st.session_state:
+    st.session_state.show_logs = False
+
 col_chat, col_log = st.columns([3, 2])
 
 st.markdown("""
@@ -209,25 +212,35 @@ with col_chat:
                 st.rerun()
 
 with col_log:
-    st.subheader("Tool call logs")
+    col_title, col_arrow = st.columns([4, 1])
+    
+    with col_title:
+        st.subheader("Tool call logs")
+    
+    with col_arrow:
+        arrow = "▼" if st.session_state.show_logs else "▲"
+        if st.button(arrow, key="toggle_logs_arrow", help="Show/Hide" logs"):
+            st.session_state.show_logs = not st.session_state.show_logs
+            st.rerun()
+    
+    if st.session_state.show_logs:
+        if st.session_state.logs:
+            latest_log = st.session_state.logs[-1]
+            tool_calls = latest_log["tool_calls"]
+            tool_results = latest_log["tool_results"]
 
-    if st.session_state.logs:
-        latest_log = st.session_state.logs[-1]
-        tool_calls = latest_log["tool_calls"]
-        tool_results = latest_log["tool_results"]
-
-        if tool_calls:
-            st.success("Phát hiện LLM gọi Tool thành công!")
-            
-            for i, (tc, tr) in enumerate(zip(tool_calls, tool_results)):
-                st.markdown(f"**[Tool Call {i+1}] Tên Tool:** `{tc['name']}`")
+            if tool_calls:
+                st.success("Phát hiện LLM gọi Tool thành công!")
                 
-                st.json(tc['arguments'])
-                
-                st.markdown("Tool được thực thi và trả về kết quả:")
-                
-                st.info(f"Dữ liệu Tool: {tr['output']}")
+                for i, (tc, tr) in enumerate(zip(tool_calls, tool_results)):
+                    st.markdown(f"**[Tool Call {i+1}] Tên Tool:** `{tc['name']}`")
+                    
+                    st.json(tc['arguments'])
+                    
+                    st.markdown("Tool được thực thi và trả về kết quả:")
+                    
+                    st.info(f"Dữ liệu Tool: {tr['output']}")
+            else:
+                st.warning("Câu hỏi này LLM tự suy luận trực tiếp, không cần kích hoạt Tool.")
         else:
-            st.warning("Câu hỏi này LLM tự suy luận trực tiếp, không cần kích hoạt Tool.")
-    else:
-        st.info("Chưa có log nào. Hãy gửi câu hỏi để bắt đầu!")
+            st.info("Chưa có log nào. Hãy gửi câu hỏi để bắt đầu!")
