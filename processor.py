@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import concurrent.futures
 from dotenv import load_dotenv
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -75,7 +76,24 @@ def classify_intent(user_prompt: str) -> str:
     )
     return response.choices[0].message.content.strip()
 
+def execute_tool_parallel(tool_call):
+    function_name = tool_call.function.name
+    try:
+        function_args = json.loads(tool_call.function.arguments)
+    except Exception as e:
+        return tool_call.id, function_name, {}, {"error": f"Lỗi định dạng tham số từ model: {str(e)}"}
 
+    if function_name in AVAILABLE_FUNCTIONS:
+        func = AVAILABLE_FUNCTIONS[function_name]
+        try:
+            tool_output = func(**function_args)
+        except Exception as e:
+            tool_output = {"error": f"Lỗi khi thực thi tool: {str(e)}"}
+    else:
+        tool_output = {"error": f"Tool '{function_name}' không được hỗ trợ."}
+
+    return tool_call.id, function_name, function_args, tool_output
+        
 def process_user_prompt(user_prompt: str) -> dict:
     """Xử lý prompt của user qua Groq Function Calling.
 
@@ -194,37 +212,24 @@ def process_user_prompt(user_prompt: str) -> dict:
         })
 
         has_tool_error = False
-        for tool_call in response_message.tool_calls:
-            function_name = tool_call.function.name
-            try:
-                function_args = json.loads(tool_call.function.arguments)
-            except Exception as e:
-                function_args = {}
-                tool_output = {"error": f"Lỗi định dạng tham số từ model: {str(e)}"}
-            else:
-                if function_name in AVAILABLE_FUNCTIONS:
-                    func = AVAILABLE_FUNCTIONS[function_name]
-                    try:
-                        tool_output = func(**function_args)
-                    except Exception as e:
-                        tool_output = {"error": f"Lỗi khi thực thi tool: {str(e)}"}
-                else:
-                    tool_output = {"error": f"Tool '{function_name}' không được hỗ trợ."}
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(execute_tool_parallel, tc) for tc in response_message.tool_calls]
+            for future in concurrent.futures.as_completed(futures):
+                t_id, function_name, function_args, tool_output = future.result()
 
-            result["tool_calls"].append({"name": function_name, "arguments": function_args})
-            result["tool_results"].append({"name": function_name, "output": tool_output})
+                result["tool_calls"].append({"name": function_name, "arguments": function_args})
+                result["tool_results"].append({"name": function_name, "output": tool_output})
+                result["steps"].append({"tool": function_name, "output": tool_output})
 
-            if isinstance(tool_output, dict) and "error" in tool_output:
-                has_tool_error = True
+                if isinstance(tool_output, dict) and "error" in tool_output:
+                    has_tool_error = True
 
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "name": function_name,
-                "content": json.dumps(tool_output, ensure_ascii=False),
-            })
-
-            result["steps"].append({"tool": function_name, "output": tool_output})
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": t_id,
+                    "name": function_name,
+                    "content": json.dumps(tool_output, ensure_ascii=False),
+                })
 
         if has_tool_error:
             messages.append({

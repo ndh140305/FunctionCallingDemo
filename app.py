@@ -219,7 +219,7 @@ with col_log:
     
     with col_arrow:
         arrow = "▼" if st.session_state.show_logs else "▲"
-        if st.button(arrow, key="toggle_logs_arrow", help="Show/Hide" logs"):
+        if st.button(arrow, key="toggle_logs_arrow", help="Show/Hide logs"):
             st.session_state.show_logs = not st.session_state.show_logs
             st.rerun()
     
