@@ -9,7 +9,7 @@ AI Agent được trang bị các công cụ sau để xử lý yêu cầu của
 1. **Gửi Email**: 
    - Tích hợp xác thực Google OAuth2 để kết nối an toàn với tài khoản Gmail của người dùng.
    - Khi người dùng yêu cầu gửi email, AI sẽ tự động tạo bản nháp. Hệ thống sẽ tạm dừng luồng thực thi và hiển thị một biểu mẫu trên giao diện người dùng để xem xét, chỉnh sửa và xác nhận trước khi email được gửi đi thực sự. Cách làm này để tạm thời khắc phục vấn đề chat history chưa được lưu lại, khiến AI không thể nhớ thông tin người dùng đã cung cấp ở các câu trước.
-   - Cụ thể quy trình: Người dùng nhập prompt -> Groq phân tích và trả về file JSON nội dung mail → Tool gọi draft_email → Hiển thị kết quả cho người dùng xem xét và chỉnh sửa → Người dùng xác nhận → Gửi email thật. Tất cả đều diễn ra trong 1 session.
+   - Cụ thể quy trình: Người dùng nhập prompt → Groq phân tích và trả về file JSON nội dung mail → Tool gọi draft_email → Hiển thị kết quả cho người dùng xem xét và chỉnh sửa → Người dùng xác nhận → Gửi email thật. Tất cả đều diễn ra trong 1 session.
 2. **Tra cứu Thời tiết**: Tự động lấy thông tin thời tiết thời gian thực tại bất kỳ địa điểm nào dựa trên API của Openweather.
 3. **Lấy Tọa độ** Chuyển đổi tên thành phố, quốc gia thành tọa độ địa lý (vĩ độ/kinh độ) phục vụ cho API thời tiết.
 4. **Tính toán**: Tính toán chính xác các biểu thức toán học phức tạp để khắc phục nhược điểm tính toán của các mô hình ngôn ngữ lớn. Sử dụng chính thư viện toán học của Python.
