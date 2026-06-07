@@ -1,7 +1,6 @@
 # Tổng quan
 
-Đây là dự án demo nghiên cứu cách LLM sử dụng tools/ api
-Model được sử dụng là Groq (llama-3.3-70b-versatile/ llama-3.1-8b-instant)
+Đây là dự án demo nghiên cứu cách LLM sử dụng tools/API. Model được sử dụng là Groq (llama-3.3-70b-versatile/ llama-3.1-8b-instant).
 
 ## Các công cụ được sử dụng
 
@@ -10,9 +9,9 @@ AI Agent được trang bị các công cụ sau để xử lý yêu cầu của
 1. **Gửi Email**: 
    - Tích hợp xác thực Google OAuth2 để kết nối an toàn với tài khoản Gmail của người dùng.
    - Khi người dùng yêu cầu gửi email, AI sẽ tự động tạo bản nháp. Hệ thống sẽ tạm dừng luồng thực thi và hiển thị một biểu mẫu trên giao diện người dùng để xem xét, chỉnh sửa và xác nhận trước khi email được gửi đi thực sự. Cách làm này để tạm thời khắc phục vấn đề chat history chưa được lưu lại, khiến AI không thể nhớ thông tin người dùng đã cung cấp ở các câu trước.
-   - Cụ thể quy trình: người dùng nhập prompt -> Groq phân tích và trả về file json nội dung mail-> tool gọi draft_email -> hiển thị kết quả cho người dùng xem xét và chỉnh sửa -> người dùng xác nhận -> gửi email thật. Tất cả đều diễn ra trong 1 session.
-2. **Tra cứu Thời tiết**: Tự động lấy thông tin thời tiết thời gian thực tại bất kỳ địa điểm nào dựa trên api của Openweather.
-3. **Lấy Tọa độ** Chuyển đổi tên thành phố, quốc gia thành tọa độ địa lý (Vĩ độ/Kinh độ) phục vụ cho API thời tiết.
+   - Cụ thể quy trình: Người dùng nhập prompt -> Groq phân tích và trả về file JSON nội dung mail → Tool gọi draft_email → Hiển thị kết quả cho người dùng xem xét và chỉnh sửa → Người dùng xác nhận → Gửi email thật. Tất cả đều diễn ra trong 1 session.
+2. **Tra cứu Thời tiết**: Tự động lấy thông tin thời tiết thời gian thực tại bất kỳ địa điểm nào dựa trên API của Openweather.
+3. **Lấy Tọa độ** Chuyển đổi tên thành phố, quốc gia thành tọa độ địa lý (vĩ độ/kinh độ) phục vụ cho API thời tiết.
 4. **Tính toán**: Tính toán chính xác các biểu thức toán học phức tạp để khắc phục nhược điểm tính toán của các mô hình ngôn ngữ lớn. Sử dụng chính thư viện toán học của Python.
 5. **Đọc file PDF**: Trích xuất nội dung văn bản từ các tệp PDF được tải lên để AI xử lý và tóm tắt. Giới hạn 5 trang / 8000 ký tự.
 
@@ -45,7 +44,7 @@ streamlit run app.py
 
 - **Giao diện Trò chuyện**: Tương tác với Agent thông qua giao diện chính ở phần màn hình bên trái.
 - **Lịch sử Gọi hàm**: Phần màn hình bên phải sẽ hiển thị chi tiết các quyết định gọi hàm của AI theo thời gian thực, bao gồm tham số truyền vào và kết quả trả về từ mỗi hàm.
-- **Bảng Điều khiển**: Quản lý trạng thái kết nối tài khoản Gmail 
+- **Bảng Điều khiển**: Quản lý trạng thái kết nối tài khoản Gmail.
 
 ## Cấu trúc Mã nguồn
 
